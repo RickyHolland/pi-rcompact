@@ -1,4 +1,4 @@
-/** Final-payload guard for Splash. Tokenizer calls perform no inference. */
+/** Final-payload guard for engines granted the `outputHeadroomGuard` capability. Tokenizer calls perform no inference. */
 export function fitOutputBudget(payload: any, inputTokens: number, contextWindow: number) {
   if (!Number.isSafeInteger(inputTokens) || inputTokens < 0 || !Number.isSafeInteger(contextWindow) || contextWindow <= 0) throw new Error('Invalid context measurement');
   const fields=['max_tokens','max_completion_tokens','max_output_tokens'].filter(k=>payload[k]!==undefined);
@@ -15,10 +15,12 @@ export function fitOutputBudget(payload: any, inputTokens: number, contextWindow
   return {...payload,[field]:available};
 }
 
+import { hasCapability } from "./engine-capabilities";
+
 export function createHeadroomGuard(fetcher: typeof fetch = fetch) {
   const capabilities=new Map<string,{until:number,window:number|null}>();
   return async (model:any,payload:any,signal?:AbortSignal) => {
-    if (model?.provider!=='splash' || model?.api!=='openai-completions' || !Array.isArray(payload?.messages)) return {payload};
+    if (model?.api !== 'openai-completions' || !hasCapability(model, "outputHeadroomGuard") || !Array.isArray(payload?.messages)) return {payload};
     let url:URL;
     try {url=new URL(model.baseUrl);} catch {return {payload};}
     if (url.protocol!=='http:' || !['127.0.0.1','localhost','[::1]'].includes(url.hostname) || url.username || url.password) return {payload};

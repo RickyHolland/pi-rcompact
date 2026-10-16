@@ -1,7 +1,10 @@
-/** Generation-only Sushi limit: never change cached reasoning/template flags. */
-export function summaryThinkingBudget(model: any, setting: unknown, maxTokens: number): number | undefined {
-  if (model?.provider !== "sushi" || model?.api !== "openai-completions") return;
-  try { const url = new URL(model.baseUrl); if (url.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)) return; } catch { return; }
+import { hasCapability, isLoopbackHttp, type EngineModel } from "./engine-capabilities";
+
+/** Generation-only reasoning-limit helper for engines granted the `reasoningBudget` capability. */
+export function summaryThinkingBudget(model: EngineModel | undefined, setting: unknown, maxTokens: number): number | undefined {
+  if (!model || !hasCapability(model, "reasoningBudget")) return;
+  if (model.api !== "openai-completions") return;
+  if (!isLoopbackHttp(model)) return;
   if (!(typeof setting === "number" && Number.isSafeInteger(setting) && setting >= 0)) return;
   if (!Number.isFinite(maxTokens) || maxTokens < 1024) return;
   return Math.min(setting, Math.floor(maxTokens) - 1024);
@@ -23,4 +26,16 @@ export function summaryReasoningInstruction(instruction: string, enabled: boolea
 export function summaryOutputLimit(model:any,setting:unknown,fallback:number):number {
  if(summaryThinkingBudget(model,0,2048)===undefined)return fallback;
  return typeof setting==='number' && Number.isSafeInteger(setting) && setting>=1024 ? Math.min(setting,fallback) : fallback;
+}
+
+/**
+ * Focused-extraction instruction is available only where the engine honours a short explicit
+ * "think briefly" instruction, and only when the caller has a valid generation-time budget for it.
+ */
+export function briefReasoningEnabled(
+  model: EngineModel | undefined,
+  setting: unknown,
+  hasBudget: boolean,
+): boolean {
+  return hasCapability(model, "briefReasoningInstruction") && setting === true && hasBudget;
 }

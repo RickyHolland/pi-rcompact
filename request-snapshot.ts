@@ -10,6 +10,7 @@ import { createHeadroomGuard } from "./request-headroom";
 import { classifySplashStream } from "./provider-errors";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
+import { hasCapability } from "./engine-capabilities";
 
 const MAX_SNAPSHOT_BYTES = 16 * 1024 * 1024;
 const ADAPTER = Symbol.for(REQUEST_ADAPTER_SYMBOL);
@@ -29,7 +30,7 @@ const cleanup: FinalizationRegistry<{dispatcher: Dispatcher; session: string; re
 
 export function supportsRequestCapture(model: any): boolean {
   if (model?.api !== "openai-completions") return false;
-  if (["splash", "omlx"].includes(model.provider)) return true;
+  if (hasCapability(model, "prefixCacheCapture")) return true;
   try { return ["localhost", "127.0.0.1", "[::1]"].includes(new URL(model.baseUrl).hostname); } catch { return false; }
 }
 

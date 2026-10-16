@@ -137,12 +137,43 @@ settings file that currently provides the `betterCompaction` section — the pro
 | `sushiThinkingBudget` | unset | `reasoning_budget_tokens` for local Sushi summary calls |
 | `sushiMaxTokens` | unset | Total summary/revision output cap (integer ≥ 1024) |
 | `sushiBriefReasoning` | `false` | Focused-extraction instruction on budgeted Sushi summary calls |
+| `engineCapabilities` | built-in table | Per-engine capability grants, keyed by provider id or `provider/modelId` glob — see [engine capabilities](#engine-capabilities) |
 | `recall` | `false` | Register the two recall tools (read at session start; needs `/reload`) |
 | `recallJournal` | `"archive"` | `"archive"` = filtered request view; `"stored"` = also read Pi's session journal (unfiltered, see [recall](#recalling-what-compaction-dropped)) |
 | `recallMaxGenerations` / `recallMaxBytes` | `4` / `8 MiB` | In-memory recall archive bounds |
 
 Pi's own `compaction.reserveTokens` / `keepRecentTokens` still decide *when* compaction
 happens and how much tail is kept. rcompact changes *how the summary is asked for*.
+
+### Engine capabilities
+
+Behaviour that depends on what a serving engine supports is granted per engine in
+`engineCapabilities` rather than being gated on a provider id. Keys are provider ids or
+`provider/modelId` globs (`*` and `?`, case-insensitive — the same language as `models`); values
+are a list of capability names, `"all"`, or `"none"`. Configured rules are added to the built-in
+grants in order, and `"none"` clears grants, so a rule can enable an engine the built-in table has
+never heard of, or switch an engine off entirely:
+
+| Capability | What it enables | Built-in grants |
+| --- | --- | --- |
+| `reasoningBudget` | `reasoning_budget_tokens` on the summary call, plus mirroring the captured reasoning effort | `sushi` |
+| `briefReasoningInstruction` | The focused-extraction instruction, used with `sushiBriefReasoning` | `sushi` |
+| `prefillCapacityRecovery` | One retry with a fresh cache prefix when the engine reports a prefill that does not fit | `sushi` |
+| `prefixCacheCapture` | Capture the exact final request and summarize against it (prefix affinity) | `splash`, `omlx` |
+| `outputHeadroomGuard` | Tokenizer preflight that fits the prompt into the context the engine has left for output | `splash` |
+| `engineRestartErrors` | Treat a 503 reported inside an HTTP 200 SSE stream as the retryable error it is | `splash` |
+
+```json
+"engineCapabilities": {
+  "myllama": ["prefixCacheCapture", "outputHeadroomGuard"],
+  "splash/legacy-*": "none"
+}
+```
+
+`/rcompact` prints the capabilities granted to the current model. A grant only decides what an
+engine supports: transport trust stays separate, so generation-time parameters and tokenizer
+preflights are still sent only to a loopback `http://` engine, and request capture still requires an
+OpenAI-compatible request shape. Granting a capability never widens where your conversation is sent.
 
 ## How it decides
 
@@ -265,12 +296,12 @@ Read these before deciding it is right for your setup.
 - **Capture covers OpenAI-compatible APIs.** Any loopback OpenAI-compatible provider
   qualifies (`localhost`, `127.0.0.1`, `::1`) — llama.cpp-style servers, vLLM, LM Studio,
   Ollama's OpenAI endpoint. Remote and non-OpenAI APIs keep the serialized-prefix path.
-- **Some extras are engine-specific by name.** The reasoning-budget bound, brief-reasoning
-  instruction, prefill-capacity recovery, restarting-engine error classification and
-  output-headroom guard are currently gated on the provider ids `sushi`, `splash` and `omlx`.
-  On other engines those features no-op; core capture, review, recall and fallback still
-  apply. Making this a configurable per-engine capability list is open work:
-  [#1 — make engine capabilities configurable](https://github.com/RickyHolland/pi-rcompact/issues/1).
+- **Some extras are engine-specific.** The reasoning-budget bound, brief-reasoning instruction,
+  prefill-capacity recovery, request-capture affinity, output-headroom guard and
+  restarting-engine error classification are granted per engine rather than assumed. The built-in
+  grants cover the ids this project is developed against; any other engine is enabled by
+  configuration — see [engine capabilities](#engine-capabilities). Core capture, review, recall and
+  fallback still apply everywhere.
 - **Free-input pricing gates the long path.** By default only models reporting zero
   input *and* zero cache-read cost may use it, because the ask re-sends the transcript.
   Override deliberately with `/rcompact models <glob>`.
