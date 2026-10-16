@@ -11,13 +11,16 @@ traceable, and future releases are versioned from here.
 ## [Unreleased]
 
 ### Added
-- Nothing yet.
-
-### Planned
-- Configurable engine capability list, so the reasoning-budget bound, output-headroom
-  fitting and engine-specific error classification can be enabled for any local engine
-  instead of the built-in `sushi` / `splash` / `omlx` provider ids
-  ([#1](https://github.com/RickyHolland/pi-rcompact/issues/1)).
+- **Configurable engine capabilities**
+  ([#1](https://github.com/RickyHolland/pi-rcompact/issues/1)). Behaviour that depends on what a
+  serving engine supports — the reasoning-budget bound, focused-extraction instruction,
+  prefill-capacity recovery, request-capture affinity, output-headroom guard and restarting-engine
+  error classification — is now decided by a capability table instead of provider-id comparisons.
+  Set `betterCompaction.engineCapabilities` to capability names, `"all"` or `"none"` per provider id
+  or `provider/modelId` glob; the built-in table keeps the previous grants, so an existing setup
+  behaves identically until you add a rule. `/rcompact` reports the capabilities granted to the
+  current model. Grants stay separate from transport trust: generation-time parameters and tokenizer
+  preflights remain loopback-only, and request capture remains OpenAI-compatible-only.
 
 ## [1.0.4] - 2026-10-16
 

@@ -10,7 +10,8 @@
  * Snapshots are session-local and never written to disk. Reports are not LLM context.
  */
 import { readFileSync } from "node:fs";
-import { summaryThinkingBudget, applySummaryThinking, summaryReasoningInstruction, summaryOutputLimit } from "./summary-thinking";
+import { summaryThinkingBudget, applySummaryThinking, summaryReasoningInstruction, summaryOutputLimit, briefReasoningEnabled } from "./summary-thinking";
+import { configureEngineCapabilities, capabilitiesFor, type EngineCapability } from "./engine-capabilities";
 import { isSushiPrefillRefusal, freshSummaryPrefix, isThinkingOnlySummary, needsSummaryFormatRecovery, CHECKPOINT_HEADINGS, hasCheckpointHeadings } from "./summary-recovery";
 import { registerNormalThinkingRecovery } from "./normal-thinking-recovery";
 import { capturedActivation } from "./activation";
@@ -255,6 +256,11 @@ interface BetterCompactionSettings {
 	sushiMaxTokens?: number | null;
 	/** Encourage brief extraction while retaining evidence; only active with a valid Sushi summary budget. */
 	sushiBriefReasoning?: boolean;
+	/**
+	 * Per-engine capability grants, keyed by provider id or `provider/modelId` glob. Values are a
+	 * list of capability names, `"all"` or `"none"`, and are added to the built-in grants.
+	 */
+	engineCapabilities?: Record<string, EngineCapability[] | "all" | "none">;
 	/** Blocking validates before apply; background reviews at the next idle boundary. */
 	verify?: boolean | "blocking" | "background" | "off";
 	/** Explicit model-id or provider/model globs override the zero-cost heuristic. */
@@ -374,8 +380,11 @@ function loadPiSettings(cwd: string): PiSettingsSource {
 	const globalSettings = readSettingsFile(globalSettingsPath());
 	const projectSettings = readSettingsFile(projectSettingsPath(cwd));
 	const fromProject = "betterCompaction" in projectSettings;
+	const merged = mergeSettings(globalSettings, projectSettings) as PiSettings;
+	// Capability grants come from settings, so every gate in this process sees the same table.
+	configureEngineCapabilities(merged.betterCompaction?.engineCapabilities);
 	return {
-		settings: mergeSettings(globalSettings, projectSettings) as PiSettings,
+		settings: merged,
 		betterCompactionSource: fromProject ? "project" : "global",
 		betterCompactionSourcePath: fromProject ? projectSettingsPath(cwd) : globalSettingsPath(),
 	};
@@ -928,13 +937,15 @@ export default function (pi: ExtensionAPI) {
 
 			if (arg === "") {
 				const cap = lowThinkingCap(settings);
+				const granted = [...capabilitiesFor(ctx.model)].sort();
+				const engineInfo = ` | engine capabilities: ${granted.length ? granted.join(", ") : "none"} (${ctx.model?.provider ?? "unknown provider"})`;
 				const capInfo =
 					cap > 0
 						? ` | low thinking cap: ${cap} (${resolveThinkingBudgetField(ctx.model ?? {}, section.thinkingBudgetField)})`
 						: "";
 				ctx.ui.notify(
 					`rcompact: ${enabled ? "enabled" : "disabled"} | compaction thinking: ${thinking} | ` +
-						`report: ${report ? "on" : "off"} | evidence review: ${reviewMode(section)}${reviewMode(section)==="background"?" ("+formatReviewState(reviewQueueFor(ctx.sessionManager.getSessionId()),false)+")":""} | session thinking: ${ctx.thinkingLevel ?? "off"}${capInfo} | Sushi summary budget: ${section.sushiThinkingBudget ?? "inherit"} | Sushi summary output: ${section.sushiMaxTokens ?? "inherit"} | focused extraction: ${section.sushiBriefReasoning === true && summaryThinkingBudget(ctx.model, section.sushiThinkingBudget, ctx.model?.maxTokens ?? 0) !== undefined ? "on" : "off"} | ` +
+						`report: ${report ? "on" : "off"} | evidence review: ${reviewMode(section)}${reviewMode(section)==="background"?" ("+formatReviewState(reviewQueueFor(ctx.sessionManager.getSessionId()),false)+")":""} | session thinking: ${ctx.thinkingLevel ?? "off"}${capInfo}${engineInfo} | Sushi summary budget: ${section.sushiThinkingBudget ?? "inherit"} | Sushi summary output: ${section.sushiMaxTokens ?? "inherit"} | focused extraction: ${briefReasoningEnabled(ctx.model, section.sushiBriefReasoning, summaryThinkingBudget(ctx.model, section.sushiThinkingBudget, ctx.model?.maxTokens ?? 0) !== undefined) ? "on" : "off"} | ` +
 						`thinking-only turn recovery: ${section.normalThinkingRecovery === false ? "off" : "on (one per run)"} | models: ${section.models?.join(", ") ?? "auto (zero input/cache cost)"} | ${formatCachePolicy(section.cachePolicy, cacheStates.get(ctx.sessionManager.getSessionId()))} | ${formatRecallState(recallArchive, section.recallJournal === "stored" ? "stored" : "archive")} | request snapshot: ${requestCapture.get() ? "ready" : "waiting for ordinary request"} | config: ${betterCompactionSource} (${betterCompactionSourcePath})`,
 				);
 				return;
@@ -1347,8 +1358,10 @@ export default function (pi: ExtensionAPI) {
 		let appliedSummaryPolicy: { thinkingBudget: number; focusedExtraction: boolean } | undefined;
 		let totalOutputTokens=0,totalPromptTokens=0,totalCacheRead=0,summaryStageMs=0;
 		const produce = async (instruction=promptText,outputLimit=maxTokens) => {
-			const briefReasoning = inferencePhase !== "verification" && settings.betterCompaction?.sushiBriefReasoning === true &&
-				summaryThinkingBudget(model, settings.betterCompaction?.sushiThinkingBudget, outputLimit) !== undefined;
+			const briefReasoning = inferencePhase !== "verification" && briefReasoningEnabled(
+				model, settings.betterCompaction?.sushiBriefReasoning,
+				summaryThinkingBudget(model, settings.betterCompaction?.sushiThinkingBudget, outputLimit) !== undefined,
+			);
 			instruction = summaryReasoningInstruction(instruction, briefReasoning);
 			const t0 = Date.now();
 			telemetry?.update({phase:"waiting_for_output",inferencePhase,attempts:++attemptCount,cacheStrategy:preserveCacheTail?"captured-request":"prefix"});

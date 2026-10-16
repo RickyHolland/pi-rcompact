@@ -37,6 +37,7 @@
     "cache-outcome.ts",
     "compaction-report.ts",
     "compaction-telemetry.ts",
+    "engine-capabilities.ts",
     "normal-thinking-recovery.ts",
     "provider-errors.ts",
     "recall-archive.ts",

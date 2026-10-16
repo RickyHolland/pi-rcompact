@@ -1,7 +1,7 @@
 /** Capacity recovery preserves filtered evidence and tool schemas, forking the rendered prefix. */
-import {summaryThinkingBudget} from './summary-thinking';
+import {hasCapability, isLoopbackHttp} from "./engine-capabilities";
 export function isSushiPrefillRefusal(model:any,message:unknown):boolean {
- return summaryThinkingBudget(model,0,2048)!==undefined && typeof message==='string' && (/\bPrefillDoesNotFit\b/.test(message) || /Context \d+ does not fit available GPU memory at KV(?:4|8), prefill chunk \d+\. Maximum context: \d+ tokens\. Reduce context or free memory\./.test(message));
+ return hasCapability(model,'prefillCapacityRecovery') && model?.api==='openai-completions' && isLoopbackHttp(model) && typeof message==='string' && (/\bPrefillDoesNotFit\b/.test(message) || /Context \d+ does not fit available GPU memory at KV(?:4|8), prefill chunk \d+\. Maximum context: \d+ tokens\. Reduce context or free memory\./.test(message));
 }
 export function freshSummaryPrefix(payload:any,nonce:string):any {
  if(!Array.isArray(payload?.messages))throw new Error('Capacity recovery requires captured messages');

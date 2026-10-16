@@ -13,3 +13,11 @@ test('compaction-telemetry has no private version literal of its own',()=>{
  assert.match(source,/from ['"]\.\/version['"]/);
  assert.doesNotMatch(source,/VERSION\s*=\s*['"]\d/,'a second hardcoded version is how 1.2.8 kept reporting itself');
 });
+
+test('every runtime module is packaged, not just the ones that existed when files was written',()=>{
+ const pkg=JSON.parse(fs.readFileSync(new URL('./package.json',import.meta.url),'utf8'));
+ const listed=new Set(pkg.files||[]);
+ const missing=fs.readdirSync(new URL('.',import.meta.url).pathname)
+  .filter(f=>f.endsWith('.ts')&&!f.endsWith('.test.ts')&&!listed.has(f));
+ assert.deepEqual(missing,[],'an unlisted module is absent from the published tarball, so installs break on import');
+});
