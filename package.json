@@ -1,6 +1,6 @@
 {
   "name": "pi-rcompact",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Cache-aware context compaction for Pi. Summarizes against the exact final request the model was already sending, so the backend's prefix cache is reused instead of thrown away — with safe native fallback.",
   "license": "MIT",
   "keywords": [
