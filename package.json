@@ -1,0 +1,75 @@
+{
+  "name": "pi-rcompact",
+  "version": "1.0.4",
+  "description": "Cache-aware context compaction for Pi. Summarizes against the exact final request the model was already sending, so the backend's prefix cache is reused instead of thrown away — with safe native fallback.",
+  "license": "MIT",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "compaction",
+    "context",
+    "prompt-cache",
+    "llm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RickyHolland/pi-rcompact.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RickyHolland/pi-rcompact/issues"
+  },
+  "homepage": "https://github.com/RickyHolland/pi-rcompact#readme",
+  "pi": {
+    "extensions": [
+      "./compaction.ts"
+    ]
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "files": [
+    "compaction.ts",
+    "atomic-write.ts",
+    "version.ts",
+    "compatibility-check.mjs",
+    "activation.ts",
+    "cache-outcome.ts",
+    "compaction-report.ts",
+    "compaction-telemetry.ts",
+    "normal-thinking-recovery.ts",
+    "provider-errors.ts",
+    "recall-archive.ts",
+    "request-headroom.ts",
+    "request-snapshot.ts",
+    "identifiers.ts",
+    "review-queue.ts",
+    "summary-recovery.ts",
+    "summary-thinking.ts",
+    "summary-verification.ts",
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "DESIGN.md",
+    "LICENSE",
+    "tsconfig.json"
+  ],
+  "scripts": {
+    "test": "node run-tests.mjs && node integration-test.mjs && HOOK_ORDER=before node integration-test.mjs && node budget-integration.mjs && HOOK_ORDER=before node budget-integration.mjs && node normal-recovery-integration.mjs && HOOK_ORDER=before node normal-recovery-integration.mjs && node headroom-integration.mjs && node upgrade-test.mjs && node screenshot-integration.mjs",
+    "test:unit": "node run-tests.mjs",
+    "typecheck": "node typecheck.mjs",
+    "check": "node compatibility-check.mjs",
+    "test:live": "node live-test.mjs",
+    "test:live:headroom": "node headroom-live.mjs"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "bun-types": "^1.4.3",
+    "typescript": "^7.0.2"
+  }
+}

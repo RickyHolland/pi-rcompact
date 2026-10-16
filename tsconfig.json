@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": [
+      "node",
+      "bun-types"
+    ]
+  },
+  "include": [
+    "compaction.ts",
+    "atomic-write.ts",
+    "version.ts",
+    "request-snapshot.ts",
+    "identifiers.ts",
+    "identifiers.test.ts",
+    "request-headroom.ts",
+    "compaction-telemetry.ts",
+    "summary-verification.ts",
+    "compaction-report.ts",
+    "provider-errors.ts",
+    "summary-thinking.ts",
+    "summary-recovery.ts"
+  ]
+}

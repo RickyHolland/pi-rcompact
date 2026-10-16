@@ -1,0 +1,48 @@
+name: Code scanning (CodeQL)
+
+# Static analysis of the extension's own TypeScript and of the workflow files.
+# It is deliberately NOT one of the required status checks for main, so a
+# CodeQL outage cannot stall a release; the CI workflow is the gate.
+#
+# Third-party actions are pinned to full commit SHAs (with the human-readable
+# version in a trailing comment, which is the format Dependabot updates). Tags
+# are mutable refs in another repository; a SHA is not.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '37 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [typescript, actions]
+    permissions:
+      contents: read
+      # Required to upload the SARIF result; nothing else in the job escalates.
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          languages: ${{ matrix.language }}
+
+      # No build step: the extension is loaded as source by Pi's jiti runtime,
+      # and CodeQL extracts TypeScript/JavaScript directly from it.
+      - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3

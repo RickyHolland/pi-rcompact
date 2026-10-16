@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Generated local artifacts — never commit machine-specific measurements
+*-results.json
+.results/
+.typecheck-*.json
+.*.mjs
+*.log
+
+# Editors / OS
+.DS_Store
+*.swp
+
+# Packaged artifacts
+*.tgz
+*.tar.gz

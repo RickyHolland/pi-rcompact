@@ -1,0 +1,53 @@
+name: Feature request
+description: A capability, setting, or behavior change you want
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Useful framing: compaction happens when the transcript is already huge, so every
+        feature here trades tokens, latency, or cache reuse against fidelity. Say which of
+        those you are willing to spend.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem, not the solution
+      description: What went wrong or cost too much in a real session, and how you worked around it
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: Behavior, command, and setting shape. Opt-in defaults are strongly preferred for anything that costs tokens on every request.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: safety
+    attributes:
+      label: Does it ever touch stored history or summary content?
+      options:
+        - No
+        - Yes, read-only
+        - Yes, it could change what gets applied
+    validations:
+      required: true
+
+  - type: textarea
+    id: fallback
+    attributes:
+      label: What should happen when it cannot be done safely
+      description: e.g. fall back to Pi native with a stated reason, cancel and retain history, disable the feature
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Environment
+      description: Pi version, provider/model, thinking level, approximate session size
+    validations:
+      required: false

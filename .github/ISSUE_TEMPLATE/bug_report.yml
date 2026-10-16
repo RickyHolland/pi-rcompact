@@ -1,0 +1,99 @@
+name: Bug report
+description: Compaction fell back, lost history, hung, or behaved unexpectedly
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Nothing here is a trap — if a field does not apply, write "n/a". The two that
+        matter most are **fallback reason** and **did history survive**.
+
+        Do **not** paste session transcripts or summary text. They usually contain secrets
+        and private paths. `telemetry/rcompact/*.json` is metadata-only and safe to
+        attach.
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: rcompact tag/commit, and Pi version (`pi --version`)
+      placeholder: "rcompact v1.0.0, Pi 1.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Provider / model and thinking level
+      description: e.g. `sushi/Qwen3.8-...` at medium thinking, loopback llama.cpp server, OpenAI, Anthropic
+      placeholder: "loopback OpenAI-compatible, provider id 'myllama', medium thinking"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Trigger (manual /compact, automatic threshold, context overflow), what you expected, what you saw
+    validations:
+      required: true
+
+  - type: textarea
+    id: rcompact
+    attributes:
+      label: Output of `/rcompact`
+      description: The whole status line — it shows enabled state, thinking, review mode, cache policy/streak, model activation, recall, and snapshot readiness
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: fallback
+    attributes:
+      label: Fallback reason or error text
+      description: Any `rcompact:` notification, the reason shown when it used native compaction, or the failure line. Redact anything private.
+      render: text
+    validations:
+      required: false
+
+  - type: dropdown
+    id: history
+    attributes:
+      label: Did the original transcript survive?
+      description: The safety property that matters most
+      options:
+        - Yes — history retained, compaction cancelled
+        - No — history was modified or lost
+        - Not applicable / unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Smallest reliable steps. Include session size in tokens if known, and whether it needs a reload, a branch, screenshots, or tool calls.
+      placeholder: |
+        1. Start a session with X
+        2. Make an ordinary request
+        3. Run /compact
+    validations:
+      required: true
+
+  - type: textarea
+    id: check
+    attributes:
+      label: Result of `/rcompact check` (or `npm test` on a clone)
+      description: Confirms whether the installed suite still passes against your Pi runtime
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: telemetry
+    attributes:
+      label: Relevant telemetry (metadata only)
+      description: One or two entries from the active profile's telemetry/rcompact/ directory
+      render: json
+    validations:
+      required: false

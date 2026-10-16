@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: typecheck + offline suite (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      # The suite drives the real Pi SDK rather than a mock, so the host runtime has to be
+      # installed. It is a peer dependency and must not be bundled by the package itself.
+      - name: Install Pi runtime
+        run: npm install -g @earendil-works/pi-coding-agent
+
+      - name: Install pinned dev dependencies
+        run: npm ci --ignore-scripts --legacy-peer-deps
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit checks and real SDK integration (both payload-hook orders)
+        run: npm test
+
+  # Guard the thing that breaks most often in this project: a Pi upgrade that changes the
+  # SDK surface the extension depends on. Advisory, because it tests against unreleased
+  # versions and is expected to fail sometimes.
+  forward-compat:
+    name: newest Pi SDK (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Install newest Pi runtime
+        run: npm install -g @earendil-works/pi-coding-agent@latest
+
+      - name: Report installed Pi version
+        # Resolve from the global prefix, not from this checkout: the runtime is a peer
+        # dependency and is deliberately not installed into node_modules.
+        run: npm ls -g --depth=0 | grep pi-coding-agent
+
+      - name: Install pinned dev dependencies
+        run: npm ci --ignore-scripts --legacy-peer-deps
+
+      - name: Offline suite against newest Pi
+        run: npm test
