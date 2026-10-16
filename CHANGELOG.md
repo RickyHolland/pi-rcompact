@@ -10,6 +10,8 @@ traceable, and future releases are versioned from here.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-16
+
 ### Added
 - **Configurable engine capabilities**
   ([#1](https://github.com/RickyHolland/pi-rcompact/issues/1)). Behaviour that depends on what a
